@@ -10,15 +10,17 @@ namespace SqlServerReseedSampleApp
   {
     static async Task Main(string[] args)
     {
+      // Localdb connection; the "bigger" SQL Server editions behave exactly the same way.
       const string ConnectionString = "Server=(localdb)\\MSSQLLocalDB;";
+
       const string TestTableName = "__Test";
 
       // Create Test table.
       using (var connection = new SqlConnection(ConnectionString))
       {
         await connection.OpenAsync();
-        await connection.ExecuteAsync($"drop table if exists {TestTableName};");
-        await connection.ExecuteAsync($"create table {TestTableName}(Id int identity not null primary key);");
+        await connection.ExecuteAsync($"DROP TABLE IF EXISTS {TestTableName};");
+        await connection.ExecuteAsync($"CREATE TABLE {TestTableName}(Id INT IDENTITY NOT NULL PRIMARY KEY);");
       }
 
       // INSERT row with identity_insert and then reseed without committing the transaction.
@@ -28,13 +30,13 @@ namespace SqlServerReseedSampleApp
         {
           await connection.OpenAsync();
 
-          await connection.ExecuteAsync($"set identity_insert {TestTableName} on;");
-          await connection.ExecuteAsync($"insert into {TestTableName} (Id) values (100);");
-          await connection.ExecuteAsync($"set identity_insert {TestTableName} off;");
-          await connection.ExecuteAsync($"dbcc checkident ('{TestTableName}', reseed, 1);");
+          await connection.ExecuteAsync($"SET IDENTITY_INSERT {TestTableName} ON;");
+          await connection.ExecuteAsync($"INSERT INTO {TestTableName} (Id) VALUES (100);");
+          await connection.ExecuteAsync($"SET IDENTITY_INSERT {TestTableName} OFF;");
+          await connection.ExecuteAsync($"DBCC CHECKIDENT('{TestTableName}', RESEED, 1);");
         }
 
-        // If this is uncommented, the ident_current query below returns 1, if not (i.e. the transaction is rolled back)
+        // If this is uncommented, the IDENT_CURRENT query below returns 1, if not (i.e. the transaction is rolled back)
         // the ident_current query returns 100!!
         // scope.Complete();
       }
@@ -43,7 +45,7 @@ namespace SqlServerReseedSampleApp
       using (var connection = new SqlConnection(ConnectionString))
       {
         await connection.OpenAsync();
-        int seed = await connection.QuerySingleAsync<int>($"select ident_current('{TestTableName}');");
+        int seed = await connection.QuerySingleAsync<int>($"SELECT IDENT_CURRENT('{TestTableName}');");
         Console.WriteLine($"Seed = {seed}"); // <-- For rolled back transaction, displays "Seed = 100" instead of "Seed = 1"!
       }
 
